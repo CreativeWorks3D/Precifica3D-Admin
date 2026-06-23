@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Precifica3D</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0f14; --surface: #161a22; --surface2: #1e2330; --border: #2a2f3d;
+    --accent: #f97316; --accent-dim: #3b1f0a; --green: #22c55e; --yellow: #f59e0b;
+    --red: #ef4444; --blue: #3b82f6; --purple: #a855f7;
+    --text: #e2e8f0; --muted: #64748b; --radius: 8px;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+  /* LOGIN */
+  #login-screen { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+  .login-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 40px 36px; width: 100%; max-width: 380px; }
+  .login-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+  .login-card p { color: var(--muted); font-size: 13px; margin-bottom: 28px; }
+  .login-field { margin-bottom: 14px; }
+  .login-field label { display: block; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+  .login-field input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; font-size: 14px; color: var(--text); outline: none; transition: border-color 0.15s; }
+  .login-field input:focus { border-color: var(--accent); }
+  .login-field input::placeholder { color: var(--muted); }
+  .login-error { color: #fca5a5; font-size: 12px; margin-bottom: 12px; min-height: 18px; }
+  .btn-login { width: 100%; background: var(--accent); color: white; border: none; border-radius: var(--radius); padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .btn-login:hover { opacity: 0.85; }
+
+  /* HEADER */
+  #admin-screen { display: none; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 16px 28px; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+  .header-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+  .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 6px; display: grid; place-items: center; font-size: 16px; }
+  .badge-admin { background: var(--accent-dim); color: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: 1px; padding: 2px 8px; border-radius: 100px; text-transform: uppercase; }
+  .btn-logout { background: transparent; border: 1px solid var(--border); border-radius: var(--radius); color: var(--muted); padding: 7px 14px; font-size: 12px; cursor: pointer; }
+  .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+  /* LAYOUT */
+  .layout { max-width: 1400px; margin: 0 auto; padding: 28px 24px; }
+
+  /* STATS */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.blue { color: var(--blue); }
+  .stat-value.purple { color: var(--purple); }
+
+  /* TOOLBAR */
+  .toolbar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+  .search-box { flex: 1; min-width: 200px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 14px; color: var(--text); font-size: 13px; outline: none; }
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--muted); }
+  .filter-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 14px; color: var(--muted); font-size: 12px; cursor: pointer; white-space: nowrap; }
+  .filter-btn:hover, .filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .btn-refresh { background: var(--accent); color: white; border: none; border-radius: var(--radius); padding: 9px 16px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .btn-refresh:hover { opacity: 0.85; }
+
+  /* TABLE */
+  .section-title { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 900px; }
+  thead th { background: var(--surface2); padding: 11px 14px; text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  td { padding: 12px 14px; font-size: 13px; vertical-align: middle; }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 100px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge-pago { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .badge-cortesia { background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid rgba(168,85,247,0.3); }
+  .badge-ativo { background: rgba(34,197,94,0.1); color: var(--green); }
+  .badge-inativo { background: rgba(239,68,68,0.1); color: var(--red); }
+  .badge-Mobile { background: #1e3a6e; color: #60a5fa; }
+  .badge-Desktop { background: #1a2e1a; color: #4ade80; }
+  .badge-Mac { background: #1a2e1a; color: #4ade80; }
+  .badge-browser { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .count-pill { background: var(--accent-dim); color: var(--accent); font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 100px; }
+  .ts { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; flex-shrink: 0; text-transform: uppercase; }
+  .user-cell { display: flex; align-items: center; gap: 10px; }
+  .user-info { display: flex; flex-direction: column; gap: 2px; }
+  .user-name { font-weight: 600; font-size: 13px; }
+  .user-email { font-size: 11px; color: var(--muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chevron { display: inline-block; transition: transform 0.2s; color: var(--muted); font-size: 11px; }
+  tr.expanded .chevron { transform: rotate(90deg); }
+
+  /* DETAIL PANEL */
+  .detail-row { display: none; }
+  .detail-row.visible { display: table-row; }
+  .detail-cell { background: #0a0c10; padding: 0 !important; border-bottom: 2px solid var(--accent-dim) !important; }
+  .detail-inner { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .detail-section h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 12px; }
+  .detail-row-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #1a1d25; font-size: 12px; }
+  .detail-row-item:last-child { border-bottom: none; }
+  .detail-label { color: var(--muted); }
+  .detail-value { font-family: var(--mono); font-size: 11px; color: var(--text); text-align: right; max-width: 200px; overflow: hidden; text-overflow: ellipsis; }
+  .devices-list { display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }
+  .device-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; font-size: 12px; }
+  .device-item .ts { margin-left: auto; }
+
+  /* EMPTY */
+  .state-empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .state-empty .icon { font-size: 32px; margin-bottom: 12px; }
+
+  /* LOCALIZAÇÃO */
+  .location-badge { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+
+  @media (max-width: 768px) {
+    .layout { padding: 16px 12px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .detail-inner { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div style="font-size:32px;margin-bottom:16px">🏷️</div>
+    <h2>Precifica3D Admin</h2>
+    <p>Acesso restrito ao administrador</p>
+    <div class="login-field">
+      <label>Senha de acesso</label>
+      <input type="password" id="login-password" placeholder="••••••••" autofocus>
+    </div>
+    <div class="login-error" id="login-error"></div>
+    <button class="btn-login" onclick="doAdminLogin()">Entrar</button>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="admin-screen">
+  <header class="header">
+    <div class="header-logo">
+      <div class="logo-icon">🏷️</div>
+      <span>Precifica3D</span>
+      <span class="badge-admin">Admin</span>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">Sair</button>
+  </header>
+
+  <div class="layout">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">Total clientes</div><div class="stat-value accent" id="stat-total">–</div></div>
+      <div class="stat-card"><div class="stat-label">Pagos</div><div class="stat-value green" id="stat-pagos">–</div></div>
+      <div class="stat-card"><div class="stat-label">Cortesia</div><div class="stat-value purple" id="stat-cortesia">–</div></div>
+      <div class="stat-card"><div class="stat-label">Ativos</div><div class="stat-value green" id="stat-ativos">–</div></div>
+      <div class="stat-card"><div class="stat-label">Logins hoje</div><div class="stat-value blue" id="stat-hoje">–</div></div>
+      <div class="stat-card"><div class="stat-label">Total logins</div><div class="stat-value" id="stat-logins">–</div></div>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" class="search-box" id="search-input" placeholder="Buscar por nome, email ou cidade..." oninput="applyFilters()">
+      <button class="filter-btn active" onclick="setFilter('all', this)">Todos</button>
+      <button class="filter-btn" onclick="setFilter('pago', this)">💳 Pagos</button>
+      <button class="filter-btn" onclick="setFilter('cortesia', this)">🎁 Cortesia</button>
+      <button class="filter-btn" onclick="setFilter('ativo', this)">✅ Ativos</button>
+      <button class="btn-refresh" onclick="loadData()">↺ Atualizar</button>
+    </div>
+
+    <div class="section-title">Clientes registrados</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:28px"></th>
+            <th>Cliente</th>
+            <th>Tipo</th>
+            <th>Status</th>
+            <th>Dispositivo</th>
+            <th>Navegador</th>
+            <th>Localização</th>
+            <th>Data compra</th>
+            <th>Logins</th>
+          </tr>
+        </thead>
+        <tbody id="users-body">
+          <tr><td colspan="9"><div class="state-empty"><div class="icon">⏳</div><p>Carregando…</p></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey:            "AIzaSyB_TmUQN_JQwYh-QQzdmehMhqe1Apnqwv8",
+  authDomain:        "calculadora3d-5d2db.firebaseapp.com",
+  projectId:         "calculadora3d-5d2db",
+  storageBucket:     "calculadora3d-5d2db.firebasestorage.app",
+  messagingSenderId: "40753148792",
+  appId:             "1:40753148792:web:8b900e70fbdbcb3eea8e8d"
+};
+
+const ADMIN_PASSWORD = "Jfk135790@";
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ── Login ─────────────────────────────────────
+function doAdminLogin() {
+  const pwd = document.getElementById("login-password").value;
+  const err = document.getElementById("login-error");
+  if (pwd === ADMIN_PASSWORD) {
+    sessionStorage.setItem("admin_auth", "1");
+    showAdmin();
+  } else {
+    err.textContent = "Senha incorreta.";
+  }
+}
+
+function doLogout() {
+  sessionStorage.removeItem("admin_auth");
+  document.getElementById("login-screen").style.display = "flex";
+  document.getElementById("admin-screen").style.display = "none";
+  document.getElementById("login-password").value = "";
+}
+
+document.getElementById("login-password").addEventListener("keydown", e => {
+  if (e.key === "Enter") doAdminLogin();
+});
+
+function showAdmin() {
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("admin-screen").style.display = "block";
+  loadData();
+}
+
+if (sessionStorage.getItem("admin_auth") === "1") showAdmin();
+
+// ── Dados ─────────────────────────────────────
+let allUsers = [];
+let activeFilter = "all";
+const locationCache = {};
+
+async function getLocation(ip) {
+  if (!ip || ip === "N/A" || ip === "–") return "–";
+  if (locationCache[ip]) return locationCache[ip];
+  try {
+    const res = await fetch(`https://ipapi.co/${ip}/json/`);
+    const data = await res.json();
+    const loc = [data.city, data.region_code, data.country_code].filter(Boolean).join(", ");
+    locationCache[ip] = loc || "–";
+    return locationCache[ip];
+  } catch {
+    return "–";
+  }
+}
+
+async function loadData() {
+  const tbody = document.getElementById("users-body");
+  tbody.innerHTML = `<tr><td colspan="9"><div class="state-empty"><div class="icon">⏳</div><p>Carregando…</p></div></td></tr>`;
+  try {
+    const [clientesSnap, dispositivosSnap] = await Promise.all([
+      db.collection("clientes").get(),
+      db.collection("dispositivos").get()
+    ]);
+
+    const dispositivosMap = {};
+    dispositivosSnap.forEach(doc => { dispositivosMap[doc.id] = doc.data().lista || []; });
+
+    allUsers = clientesSnap.docs.map(doc => {
+      const d = doc.data();
+      const uid = doc.id;
+      const dispositivos = dispositivosMap[uid] || [];
+      const ultimo = dispositivos[dispositivos.length - 1] || {};
+      return {
+        uid,
+        nome: d.nome || "–",
+        email: d.email || uid,
+        tipoAcesso: d.tipoAcesso || "–",
+        status: d.status || "ativo",
+        dataCompra: d.dataCompra || "–",
+        totalLogins: d.totalLogins || 0,
+        ultimoLogin: d.ultimoLogin || "–",
+        transacaoId: d.transacaoId || "–",
+        dispositivos,
+        ultimoDispositivo: ultimo.dispositivo || "–",
+        ultimoNavegador: ultimo.navegador || "–",
+        ultimoAcesso: ultimo.primeiro_acesso || "–",
+        ip: "–",
+        localizacao: "–",
+      };
+    });
+
+    updateStats();
+    applyFilters();
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="state-empty"><div class="icon">⚠️</div><p>Erro: ${err.message}</p></div></td></tr>`;
+  }
+}
+
+function updateStats() {
+  const today = new Date().toLocaleDateString("pt-BR");
+  let pagos = 0, cortesia = 0, ativos = 0, hoje = 0, total = 0;
+  allUsers.forEach(u => {
+    total++;
+    if (u.tipoAcesso === "pago") pagos++;
+    if (u.tipoAcesso === "cortesia") cortesia++;
+    if (u.status === "ativo") ativos++;
+    if (u.ultimoLogin && u.ultimoLogin.includes(today.split("/")[2])) hoje++;
+  });
+  document.getElementById("stat-total").textContent    = total;
+  document.getElementById("stat-pagos").textContent    = pagos;
+  document.getElementById("stat-cortesia").textContent = cortesia;
+  document.getElementById("stat-ativos").textContent   = ativos;
+  document.getElementById("stat-hoje").textContent     = hoje;
+  document.getElementById("stat-logins").textContent   = allUsers.reduce((a, u) => a + (u.totalLogins || 0), 0);
+}
+
+function setFilter(val, btn) {
+  activeFilter = val;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = document.getElementById("search-input").value.toLowerCase();
+  const filtered = allUsers.filter(u => {
+    const matchSearch = !q ||
+      (u.nome || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.localizacao || "").toLowerCase().includes(q);
+    const matchFilter =
+      activeFilter === "all" ||
+      (activeFilter === "pago" && u.tipoAcesso === "pago") ||
+      (activeFilter === "cortesia" && u.tipoAcesso === "cortesia") ||
+      (activeFilter === "ativo" && u.status === "ativo");
+    return matchSearch && matchFilter;
+  });
+  renderTable(filtered);
+}
+
+function renderTable(users) {
+  const tbody = document.getElementById("users-body");
+  if (!users.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="state-empty"><div class="icon">🔍</div><p>Nenhum cliente encontrado.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = users.map((u, i) => {
+    const color = strColor(u.email);
+    const initial = (u.nome || u.email || "?")[0].toUpperCase();
+    const tipoBadge = u.tipoAcesso === "pago"
+      ? `<span class="badge badge-pago">💳 Pago</span>`
+      : `<span class="badge badge-cortesia">🎁 Cortesia</span>`;
+    const statusBadge = u.status === "ativo"
+      ? `<span class="badge badge-ativo">● Ativo</span>`
+      : `<span class="badge badge-inativo">● Inativo</span>`;
+    const devBadge = `<span class="badge badge-${u.ultimoDispositivo}">${deviceIcon(u.ultimoDispositivo)} ${u.ultimoDispositivo}</span>`;
+    const dataFormatada = u.dataCompra && u.dataCompra !== "–" ? u.dataCompra.split("T")[0] : "–";
+
+    return `
+      <tr onclick="toggleDetail('${u.uid}', ${i})" data-row="${i}">
+        <td><span class="chevron">▶</span></td>
+        <td>
+          <div class="user-cell">
+            <div class="avatar" style="background:${color}20;color:${color}">${initial}</div>
+            <div class="user-info">
+              <span class="user-name">${u.nome}</span>
+              <span class="user-email">${u.email}</span>
+            </div>
+          </div>
+        </td>
+        <td>${tipoBadge}</td>
+        <td>${statusBadge}</td>
+        <td>${devBadge}</td>
+        <td><span class="badge badge-browser">${u.ultimoNavegador}</span></td>
+        <td><span class="location-badge" id="loc-${u.uid}">📍 carregando...</span></td>
+        <td><span class="ts">${dataFormatada}</span></td>
+        <td><span class="count-pill">${u.totalLogins}</span></td>
+      </tr>
+      <tr class="detail-row" id="detail-${u.uid}">
+        <td class="detail-cell" colspan="9">
+          <div class="detail-inner">
+            <div class="detail-section">
+              <h3>Informações do cliente</h3>
+              <div class="detail-row-item"><span class="detail-label">Nome</span><span class="detail-value">${u.nome}</span></div>
+              <div class="detail-row-item"><span class="detail-label">E-mail</span><span class="detail-value">${u.email}</span></div>
+              <div class="detail-row-item"><span class="detail-label">Tipo de acesso</span><span class="detail-value">${u.tipoAcesso}</span></div>
+              <div class="detail-row-item"><span class="detail-label">Status</span><span class="detail-value">${u.status}</span></div>
+              <div class="detail-row-item"><span class="detail-label">Data da compra</span><span class="detail-value">${dataFormatada}</span></div>
+              <div class="detail-row-item"><span class="detail-label">Total de logins</span><span class="detail-value">${u.totalLogins}</span></div>
+              <div class="detail-row-item"><span class="detail-label">Último login</span><span class="detail-value">${u.ultimoLogin || "–"}</span></div>
+              <div class="detail-row-item"><span class="detail-label">ID transação</span><span class="detail-value">${u.transacaoId}</span></div>
+              <div class="detail-row-item"><span class="detail-label">Localização</span><span class="detail-value" id="loc-detail-${u.uid}">carregando...</span></div>
+            </div>
+            <div class="detail-section">
+              <h3>Dispositivos registrados (${u.dispositivos.length}/2)</h3>
+              <div class="devices-list">
+                ${u.dispositivos.length === 0
+                  ? '<p style="color:var(--muted);font-size:12px">Nenhum dispositivo registrado.</p>'
+                  : u.dispositivos.map(d => `
+                    <div class="device-item">
+                      <span>${deviceIcon(d.dispositivo)}</span>
+                      <span style="font-weight:600">${d.dispositivo || "–"}</span>
+                      <span style="color:var(--muted)">${d.navegador || "–"}</span>
+                      <span class="ts">${d.primeiro_acesso || "–"}</span>
+                    </div>
+                  `).join("")}
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+
+  // Carrega localização para cada usuário
+  users.forEach(u => loadLocation(u));
+}
+
+async function loadLocation(u) {
+  // Tenta pegar IP do último dispositivo
+  const ip = u.ip || "–";
+  const loc = await getLocation(ip);
+  const el1 = document.getElementById(`loc-${u.uid}`);
+  const el2 = document.getElementById(`loc-detail-${u.uid}`);
+  if (el1) el1.textContent = `📍 ${loc}`;
+  if (el2) el2.textContent = loc;
+  u.localizacao = loc;
+}
+
+function toggleDetail(uid, idx) {
+  const row = document.getElementById(`detail-${uid}`);
+  const main = document.querySelector(`[data-row="${idx}"]`);
+  const visible = row.classList.contains("visible");
+  row.classList.toggle("visible", !visible);
+  main.classList.toggle("expanded", !visible);
+}
+
+function deviceIcon(d) {
+  if (!d) return "❓";
+  if (d === "iPhone" || d === "Android") return "📱";
+  if (d === "iPad" || d === "Tablet Android") return "📲";
+  return "🖥️";
+}
+
+function strColor(str = "") {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return `hsl(${Math.abs(hash) % 360}, 65%, 60%)`;
+}
+</script>
+</body>
+</html>
